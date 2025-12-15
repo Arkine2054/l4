@@ -1,0 +1,5 @@
+INFO server started
+ERROR failed to connect
+WARN retrying
+ERROR timeout
+INFO done
