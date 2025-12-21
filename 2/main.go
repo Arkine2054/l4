@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 )
 
-// --- структуры для обмена ---
 type Request struct {
 	Pattern string   `json:"pattern"`
 	Lines   []string `json:"lines"`
@@ -23,7 +23,6 @@ type Response struct {
 	Matches []string `json:"matches"`
 }
 
-// --- worker ---
 func runWorker(addr string) {
 	http.HandleFunc("/grep", func(w http.ResponseWriter, r *http.Request) {
 		var req Request
@@ -55,14 +54,19 @@ func runWorker(addr string) {
 				matches = append(matches, m)
 			}
 		}
-		json.NewEncoder(w).Encode(Response{Matches: matches})
+		err := json.NewEncoder(w).Encode(Response{Matches: matches})
+		if err != nil {
+			fmt.Printf("Worker: failed to encode response: %v", err)
+		}
 	})
 
 	fmt.Printf("Worker listening on %s\n", addr)
-	http.ListenAndServe(addr, nil)
+	err := http.ListenAndServe(addr, nil)
+	if err != nil {
+		fmt.Printf("Worker: failed to start http server: %v", err)
+	}
 }
 
-// --- coordinator ---
 func runCoordinator(pattern string, ignore bool, nodes string, quorum int) {
 	nodeList := strings.Split(nodes, ",")
 	scanner := bufio.NewScanner(os.Stdin)
@@ -71,7 +75,6 @@ func runCoordinator(pattern string, ignore bool, nodes string, quorum int) {
 		lines = append(lines, scanner.Text())
 	}
 
-	// --- распределяем строки по воркерам ---
 	chunks := make([][]string, len(nodeList))
 	for i, line := range lines {
 		chunks[i%len(nodeList)] = append(chunks[i%len(nodeList)], line)
@@ -100,10 +103,18 @@ func runCoordinator(pattern string, ignore bool, nodes string, quorum int) {
 				results <- []string{}
 				return
 			}
-			defer resp.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					fmt.Printf("Worker: failed to close response body: %v", err)
+				}
+			}(resp.Body)
 
 			var res Response
-			json.NewDecoder(resp.Body).Decode(&res)
+			err = json.NewDecoder(resp.Body).Decode(&res)
+			if err != nil {
+				fmt.Printf("Worker: failed to decode response body: %v", err)
+			}
 			results <- res.Matches
 		}(n, chunks[i])
 	}
@@ -121,7 +132,6 @@ func runCoordinator(pattern string, ignore bool, nodes string, quorum int) {
 		}
 	}
 
-	// --- выводим уникальные строки ---
 	printed := make(map[string]bool)
 	for _, l := range final {
 		if !printed[l] {
@@ -133,7 +143,6 @@ func runCoordinator(pattern string, ignore bool, nodes string, quorum int) {
 	wg.Wait()
 }
 
-// --- main CLI ---
 func main() {
 	workerFlag := flag.Bool("worker", false, "run in worker mode")
 	addr := flag.String("addr", ":9001", "worker listen address")
