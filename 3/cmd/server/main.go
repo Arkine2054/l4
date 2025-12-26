@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -32,19 +33,18 @@ func main() {
 	router := httpapi.NewRouter(handler)
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:8080", // слушаем на всех интерфейсах
+		Addr:    "0.0.0.0:8080",
 		Handler: httpapi.LoggingMiddleware(log, router),
 	}
 
-	// Запуск воркеров напоминаний и cleaner
 	workers.StartReminderPool(ctx, 2, service.ReminderChannel(), service, func(s string) {
 		fmt.Println("!!!", s)
 	})
-	go workers.Cleaner(ctx, service, 10*time.Second) // 10 секунд для теста
+	go workers.Cleaner(ctx, service, 10*time.Second)
 
 	fmt.Println("Server started on port", port)
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			fmt.Println("HTTP error:", err)
 		}
 	}()

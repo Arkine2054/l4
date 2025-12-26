@@ -130,6 +130,13 @@ curl -X POST http://<server_ip>:8080/update_event \
 curl -X POST http://<server_ip>:8080/delete_event \
 -H "Content-Type: application/json" \
 -d '{"id":1}'
+
+curl "http://172.20.92.105:8080/events_for_day?user_id=1&date=2025-12-26"
+
+curl "http://172.20.92.105:8080/events_for_week?user_id=1&date=2025-12-26"
+
+curl "http://172.20.92.105:8080/events_for_month?user_id=1&date=2025-12-26"
+
 ```
 
 ---

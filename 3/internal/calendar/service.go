@@ -48,12 +48,10 @@ func (s *Service) Update(id int, e Event) error {
 	s.storage.mu.Lock()
 	defer s.storage.mu.Unlock()
 
-	// Проверяем, существует ли событие
 	if _, ok := s.storage.events[id]; !ok {
 		return fmt.Errorf("event %d not found", id)
 	}
 
-	// Присваиваем ID, чтобы не потерять связь
 	e.ID = id
 	s.storage.events[id] = e
 	return nil
@@ -96,8 +94,8 @@ func (s *Service) EventsForDay(userID int, date time.Time) []Event {
 
 func (s *Service) EventsForWeek(userID int, date time.Time) []Event {
 	var res []Event
-	start := date.AddDate(0, 0, -int(date.Weekday())) // начало недели (вс)
-	end := start.AddDate(0, 0, 7)                     // конец недели
+	start := date.AddDate(0, 0, -int(date.Weekday()))
+	end := start.AddDate(0, 0, 7)
 	s.storage.mu.RLock()
 	defer s.storage.mu.RUnlock()
 	for _, e := range s.storage.events {

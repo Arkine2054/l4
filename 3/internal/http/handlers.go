@@ -14,7 +14,6 @@ type Handler struct {
 	Service *calendar.Service
 }
 
-// POST /create_event
 func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		UserID   int    `json:"user_id"`
@@ -44,17 +43,22 @@ func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		remind = &t
 	}
 
-	ev, _ := h.Service.Create(calendar.Event{
+	ev, err := h.Service.Create(calendar.Event{
 		UserID:   req.UserID,
 		Date:     date,
 		Text:     req.Text,
 		RemindAt: remind,
 	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err), http.StatusBadRequest)
+	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"result": ev})
+	err = json.NewEncoder(w).Encode(map[string]interface{}{"result": ev})
+	if err != nil {
+		fmt.Printf(`{"error": "%s"}`, err)
+	}
 }
 
-// GET /events_for_day?user_id=1&date=2025-12-26
 func (h *Handler) EventsForDay(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	userID, _ := strconv.Atoi(q.Get("user_id"))
@@ -66,10 +70,12 @@ func (h *Handler) EventsForDay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	events := h.Service.EventsForDay(userID, date)
-	json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+	err = json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+	if err != nil {
+		fmt.Printf(`{"error": "%s"}`, err)
+	}
 }
 
-// GET /events_for_week?user_id=1&date=2025-12-26
 func (h *Handler) EventsForWeek(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	userID, _ := strconv.Atoi(q.Get("user_id"))
@@ -81,10 +87,12 @@ func (h *Handler) EventsForWeek(w http.ResponseWriter, r *http.Request) {
 	}
 
 	events := h.Service.EventsForWeek(userID, date)
-	json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+	err = json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+	if err != nil {
+		fmt.Printf(`{"error": "%s"}`, err)
+	}
 }
 
-// GET /events_for_month?user_id=1&date=2025-12-26
 func (h *Handler) EventsForMonth(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	userID, _ := strconv.Atoi(q.Get("user_id"))
@@ -96,10 +104,12 @@ func (h *Handler) EventsForMonth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	events := h.Service.EventsForMonth(userID, date)
-	json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+	err = json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+	if err != nil {
+		fmt.Printf("Error encoding events: %v\n", err)
+	}
 }
 
-// POST /update_event
 func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ID       int    `json:"id"`
@@ -142,10 +152,12 @@ func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+	err = json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+	if err != nil {
+		fmt.Printf("Error encoding events: %v\n", err)
+	}
 }
 
-// POST /delete_event
 func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ID int `json:"id"`
@@ -162,5 +174,8 @@ func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+	err = json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+	if err != nil {
+		fmt.Printf("Error encoding events: %v\n", err)
+	}
 }

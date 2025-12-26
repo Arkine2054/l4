@@ -60,6 +60,5 @@ func TestReminderWorkerCancelled(t *testing.T) {
 	case <-called:
 		t.Fatal("reminder should have been cancelled")
 	case <-time.After(100 * time.Millisecond):
-		// OK
 	}
 }
