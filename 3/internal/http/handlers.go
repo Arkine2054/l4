@@ -1,0 +1,166 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
+	"gitlab.com/arkine/l4/3/internal/calendar"
+)
+
+type Handler struct {
+	Service *calendar.Service
+}
+
+// POST /create_event
+func (h *Handler) CreateEvent(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		UserID   int    `json:"user_id"`
+		Date     string `json:"date"`
+		Text     string `json:"text"`
+		RemindAt string `json:"remind_at,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err), http.StatusBadRequest)
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		http.Error(w, `{"error": "invalid date format"}`, http.StatusBadRequest)
+		return
+	}
+
+	var remind *time.Time
+	if req.RemindAt != "" {
+		t, err := time.Parse(time.RFC3339, req.RemindAt)
+		if err != nil {
+			http.Error(w, `{"error": "invalid remind_at format"}`, http.StatusBadRequest)
+			return
+		}
+		remind = &t
+	}
+
+	ev, _ := h.Service.Create(calendar.Event{
+		UserID:   req.UserID,
+		Date:     date,
+		Text:     req.Text,
+		RemindAt: remind,
+	})
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"result": ev})
+}
+
+// GET /events_for_day?user_id=1&date=2025-12-26
+func (h *Handler) EventsForDay(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	userID, _ := strconv.Atoi(q.Get("user_id"))
+	dateStr := q.Get("date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		http.Error(w, `{"error": "invalid date"}`, http.StatusBadRequest)
+		return
+	}
+
+	events := h.Service.EventsForDay(userID, date)
+	json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+}
+
+// GET /events_for_week?user_id=1&date=2025-12-26
+func (h *Handler) EventsForWeek(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	userID, _ := strconv.Atoi(q.Get("user_id"))
+	dateStr := q.Get("date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		http.Error(w, `{"error": "invalid date"}`, http.StatusBadRequest)
+		return
+	}
+
+	events := h.Service.EventsForWeek(userID, date)
+	json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+}
+
+// GET /events_for_month?user_id=1&date=2025-12-26
+func (h *Handler) EventsForMonth(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	userID, _ := strconv.Atoi(q.Get("user_id"))
+	dateStr := q.Get("date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		http.Error(w, `{"error": "invalid date"}`, http.StatusBadRequest)
+		return
+	}
+
+	events := h.Service.EventsForMonth(userID, date)
+	json.NewEncoder(w).Encode(map[string]interface{}{"result": events})
+}
+
+// POST /update_event
+func (h *Handler) UpdateEvent(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID       int    `json:"id"`
+		UserID   int    `json:"user_id"`
+		Date     string `json:"date"`
+		Text     string `json:"text"`
+		RemindAt string `json:"remind_at,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err), http.StatusBadRequest)
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		http.Error(w, `{"error": "invalid date format"}`, http.StatusBadRequest)
+		return
+	}
+
+	var remind *time.Time
+	if req.RemindAt != "" {
+		t, err := time.Parse(time.RFC3339, req.RemindAt)
+		if err != nil {
+			http.Error(w, `{"error": "invalid remind_at format"}`, http.StatusBadRequest)
+			return
+		}
+		remind = &t
+	}
+
+	err = h.Service.Update(req.ID, calendar.Event{
+		ID:       req.ID,
+		UserID:   req.UserID,
+		Date:     date,
+		Text:     req.Text,
+		RemindAt: remind,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err), http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+}
+
+// POST /delete_event
+func (h *Handler) DeleteEvent(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID int `json:"id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err), http.StatusBadRequest)
+		return
+	}
+
+	err := h.Service.Delete(req.ID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err), http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"result": "ok"})
+}
