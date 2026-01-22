@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
+	"io"
 	"net/http"
 )
 
@@ -17,14 +17,16 @@ type Response struct {
 
 func SumHandler(w http.ResponseWriter, r *http.Request) {
 	var req Request
+
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		log.Printf("error decoding request: %v", err)
+	if err != nil && err != io.EOF {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
 	}
 
 	resp := Response{Sum: req.A + req.B}
-	err = json.NewEncoder(w).Encode(resp)
-	if err != nil {
-		log.Printf("error encoding response: %v", err)
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
 }

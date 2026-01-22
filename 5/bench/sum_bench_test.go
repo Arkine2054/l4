@@ -10,11 +10,19 @@ import (
 )
 
 func BenchmarkSumHandler(b *testing.B) {
-	body := []byte(`{"a":10,"b":20}`)
-	req := httptest.NewRequest(http.MethodPost, "/sum", bytes.NewReader(body))
-	w := httptest.NewRecorder()
+	body := []byte(`{"a":1,"b":2}`)
+
+	b.ReportAllocs()
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/sum",
+			bytes.NewReader(body),
+		)
+		w := httptest.NewRecorder()
+
 		handler.SumHandler(w, req)
 	}
 }
